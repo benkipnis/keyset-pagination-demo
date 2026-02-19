@@ -1,6 +1,6 @@
 # MongoDB Keyset Pagination Demo
 
-**For MongoDB Solutions Architects.** This repo is a runnable demo you can use to show keyset (cursor-based) pagination on MongoDB, with a small web UI, timings, and a live request log. It started as a PBM integration services POV and is now maintained as a general-purpose demo for solutions architects.
+**For MongoDB Solutions Architects.** This repo is a runnable demo you can use to show keyset (cursor-based) pagination on MongoDB, with a small web UI, timings, and a live request log.
 
 > **Note:** The code and documentation in this repository are predominantly **AI-generated**. They are provided as-is for demo and reference; review and adapt as needed for your environment.
 
