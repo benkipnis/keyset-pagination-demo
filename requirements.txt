@@ -1,0 +1,12 @@
+# PBM Integration Services - Demo
+# Python 3.9+
+
+pymongo>=4.0
+PyYAML>=6.0
+python-dotenv>=1.0
+
+# Development / testing
+pytest>=7.0
+
+# Sample web front-end
+flask>=3.0

@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claims by Provider – Keyset Pagination</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --border: #2d3a4d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-dim: #388bfd66;
+      --green: #3fb950;
+      --orange: #d29922;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 1.5rem 2rem;
+      line-height: 1.5;
+    }
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin: 0 0 1rem;
+      color: var(--accent);
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: flex-end;
+      margin-bottom: 1.5rem;
+      padding: 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .field label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .field input {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.5rem 0.75rem;
+      border-radius: 4px;
+      font: inherit;
+      min-width: 140px;
+    }
+    .field input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-dim);
+    }
+    .field-toggle { min-width: auto; }
+    .field-toggle label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.875rem; color: var(--text); text-transform: none; }
+    .field-toggle input[type="checkbox"] { width: auto; min-width: auto; }
+    button {
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover { filter: brightness(1.1); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .timings {
+      margin-bottom: 1rem;
+      padding: 0.75rem 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.875rem;
+      color: var(--muted);
+    }
+    .timings strong { color: var(--green); }
+    .timings .ms { color: var(--orange); }
+    .pagination {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .pagination span { color: var(--muted); }
+    .results-summary {
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+      color: var(--muted);
+    }
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8125rem;
+    }
+    th, td {
+      padding: 0.5rem 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(88, 166, 255, 0.06); }
+    .empty {
+      padding: 2rem;
+      text-align: center;
+      color: var(--muted);
+    }
+    .error {
+      padding: 1rem;
+      background: rgba(248, 81, 73, 0.15);
+      border: 1px solid #f85149;
+      border-radius: 6px;
+      color: #f85149;
+      margin-bottom: 1rem;
+    }
+    .top-row {
+      display: flex;
+      gap: 1.5rem;
+      align-items: flex-start;
+    }
+    .main-content { flex: 1; min-width: 0; }
+    .request-log-panel {
+      width: 320px;
+      flex-shrink: 0;
+      padding: 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .request-log-panel h2 {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin: 0 0 0.5rem;
+    }
+    .request-log-viewing {
+      font-size: 0.8125rem;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+    }
+    .request-log-list {
+      overflow-y: auto;
+      flex: 1;
+    }
+    .request-log-entry {
+      font-size: 0.75rem;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+    .request-log-entry:last-child { border-bottom: none; }
+    .request-log-entry .req-label { color: var(--accent); font-weight: 600; }
+    .request-log-entry .op { color: var(--muted); margin-top: 0.25rem; }
+    .request-log-entry .op .ms { color: var(--orange); }
+    .request-log-entry .request-body {
+      margin-top: 0.5rem;
+      padding: 0.5rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 0.6875rem;
+      line-height: 1.4;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: var(--muted);
+    }
+    .request-log-empty { color: var(--muted); font-size: 0.8125rem; }
+  </style>
+</head>
+<body>
+  <h1>Claims by Provider (keyset pagination)</h1>
+  <div class="top-row">
+    <div class="main-content">
+  <div class="controls">
+    <div class="field">
+      <label for="provider_id">Provider ID</label>
+      <input id="provider_id" type="text" placeholder="e.g. 00-000001" value="00-000001">
+    </div>
+    <div class="field">
+      <label for="page_size">Records per page</label>
+      <input id="page_size" type="number" min="1" max="1000" value="10">
+    </div>
+    <div class="field">
+      <label for="date_start">Date start (optional)</label>
+      <input id="date_start" type="text" placeholder="YYYY-MM-DD">
+    </div>
+    <div class="field">
+      <label for="date_end">Date end (optional)</label>
+      <input id="date_end" type="text" placeholder="YYYY-MM-DD">
+    </div>
+    <div class="field field-toggle">
+      <label for="include_count">
+        <input type="checkbox" id="include_count" title="When on, each page load runs count_documents() so you can see count timing on every request.">
+        Run count on every page
+      </label>
+    </div>
+    <button id="btn_search" type="button">Load first page</button>
+  </div>
+
+  <div id="timings" class="timings" style="display: none;"></div>
+  <div id="error" class="error" style="display: none;"></div>
+  <div id="pagination" class="pagination" style="display: none;"></div>
+  <div id="results_summary" class="results-summary" style="display: none;"></div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Claim ID</th>
+          <th>Service begin</th>
+          <th>Service end</th>
+          <th>Provider ID</th>
+          <th>Recovery method</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+  <div id="empty" class="empty" style="display: none;">Enter a provider ID and click “Load first page”.</div>
+
+    </div>
+    <div class="request-log-panel">
+      <h2>MongoDB requests</h2>
+      <div id="request_log_viewing" class="request-log-viewing" style="display: none;"></div>
+      <div id="request_log_list" class="request-log-list">
+        <div id="request_log_empty" class="request-log-empty">Requests appear here as you load pages.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const providerIdEl = document.getElementById('provider_id');
+    const pageSizeEl = document.getElementById('page_size');
+    const dateStartEl = document.getElementById('date_start');
+    const dateEndEl = document.getElementById('date_end');
+    const includeCountEl = document.getElementById('include_count');
+    const btnSearch = document.getElementById('btn_search');
+    const timingsEl = document.getElementById('timings');
+    const errorEl = document.getElementById('error');
+    const paginationEl = document.getElementById('pagination');
+    const resultsSummaryEl = document.getElementById('results_summary');
+    const tbody = document.getElementById('tbody');
+    const emptyEl = document.getElementById('empty');
+    const requestLogListEl = document.getElementById('request_log_list');
+    const requestLogEmptyEl = document.getElementById('request_log_empty');
+    const requestLogViewingEl = document.getElementById('request_log_viewing');
+
+    function firstDocCursor(doc) {
+      if (!doc) return null;
+      return { serviceBeginDate: doc.serviceBeginDate, serviceEndDate: doc.serviceEndDate, _id: doc._id };
+    }
+
+    let state = {
+      total: 0,
+      pageSize: 0,
+      numPages: 0,
+      currentPageIndex: 0,
+      cursors: [],
+      beforeCursors: {},
+      lastTimings: null,
+      requestLog: [],
+      requestCount: 0,
+      reachedLastViaButton: false,
+    };
+
+    function addRequestLogEntry(operations, label) {
+      if (!operations || !operations.length) return;
+      state.requestCount++;
+      state.requestLog.unshift({
+        id: state.requestCount,
+        label: label || 'Request ' + state.requestCount,
+        operations: operations,
+      });
+      renderRequestLog();
+      requestLogListEl.scrollTop = 0;
+    }
+
+    function clearRequestLog() {
+      state.requestLog = [];
+      state.requestCount = 0;
+      renderRequestLog();
+    }
+
+    function formatRequest(o) {
+      if (!o.request) return '';
+      const r = o.request;
+      const parts = [];
+      if (r.method === 'count_documents') {
+        parts.push('collection.count_documents(' + JSON.stringify(r.filter, null, 2) + ')');
+      } else if (r.method === 'find') {
+        parts.push('collection.find(' + JSON.stringify(r.filter, null, 2) + ')');
+        if (r.sort && r.sort.length) parts.push('  .sort(' + JSON.stringify(r.sort) + ')');
+        if (r.limit != null) parts.push('  .limit(' + r.limit + ')');
+      }
+      return parts.join('\n');
+    }
+
+    function renderRequestLog() {
+      if (state.requestLog.length === 0) {
+        requestLogListEl.innerHTML = '';
+        requestLogListEl.appendChild(requestLogEmptyEl);
+        requestLogEmptyEl.style.display = 'block';
+        return;
+      }
+      requestLogEmptyEl.style.display = 'none';
+      requestLogListEl.innerHTML = '';
+      state.requestLog.forEach(entry => {
+        const div = document.createElement('div');
+        div.className = 'request-log-entry';
+        const opsLine = entry.operations.map(o => escapeHtml(o.op) + ' <span class="ms">(' + o.ms + ' ms)</span>').join('<br>');
+        const blocks = entry.operations.map(o => {
+          const reqText = formatRequest(o);
+          return reqText ? '<pre class="request-body">' + escapeHtml(reqText) + '</pre>' : '';
+        }).filter(Boolean);
+        const blocksHtml = blocks.length ? blocks.join('') : '';
+        div.innerHTML = '<span class="req-label">' + escapeHtml(entry.label) + '</span><div class="op">' + opsLine + '</div>' + blocksHtml;
+        requestLogListEl.appendChild(div);
+      });
+    }
+
+    function showError(msg) {
+      errorEl.textContent = msg;
+      errorEl.style.display = 'block';
+    }
+    function hideError() {
+      errorEl.style.display = 'none';
+    }
+
+    function renderTimings() {
+      const t = state.lastTimings;
+      if (!t) return;
+      const parts = [];
+      if (t.count_ms != null) parts.push(`Total count: <span class="ms">${t.count_ms} ms</span>`);
+      if (t.first_page_ms != null) parts.push(`First page: <span class="ms">${t.first_page_ms} ms</span>`);
+      if (t.next_page_ms != null) parts.push(`This page (keyset): <span class="ms">${t.next_page_ms} ms</span>`);
+      if (t.last_page_ms != null) parts.push(`Last page (reverse): <span class="ms">${t.last_page_ms} ms</span>`);
+      if (t.prev_page_ms != null) parts.push(`Prev page (keyset): <span class="ms">${t.prev_page_ms} ms</span>`);
+      timingsEl.innerHTML = '<strong>Timings</strong> ' + parts.join(' &nbsp;|&nbsp; ');
+      timingsEl.style.display = 'block';
+    }
+
+    function renderTable(documents) {
+      tbody.innerHTML = '';
+      if (!documents || documents.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5">No records on this page.</td></tr>';
+        return;
+      }
+      documents.forEach(doc => {
+        const tr = document.createElement('tr');
+        const claimId = (doc.identifiers && doc.identifiers.claimSystemClaimId) || doc._id || '—';
+        const begin = doc.serviceBeginDate || '—';
+        const end = doc.serviceEndDate || '—';
+        const provId = (doc.billingProvider && doc.billingProvider.providerId) || '—';
+        const recovery = doc.recoveryMethod || '—';
+        tr.innerHTML = `<td>${escapeHtml(String(claimId))}</td><td>${escapeHtml(String(begin))}</td><td>${escapeHtml(String(end))}</td><td>${escapeHtml(String(provId))}</td><td>${escapeHtml(String(recovery))}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function escapeHtml(s) {
+      const div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
+    }
+
+    function updateRequestLogViewing() {
+      if (state.numPages > 0) {
+        requestLogViewingEl.textContent = 'Viewing page ' + (state.currentPageIndex + 1) + ' of ' + state.numPages;
+        requestLogViewingEl.style.display = 'block';
+      } else {
+        requestLogViewingEl.style.display = 'none';
+      }
+    }
+
+    function renderPagination() {
+      if (state.numPages <= 0) {
+        paginationEl.style.display = 'none';
+        return;
+      }
+      updateRequestLogViewing();
+      paginationEl.style.display = 'flex';
+      const cur = state.currentPageIndex;
+      const prevDisabled = cur <= 0;
+      const nextDisabled = cur >= state.numPages - 1;
+      const lastDisabled = state.numPages <= 1;
+      paginationEl.innerHTML = `
+        <button type="button" id="btn_prev" ${prevDisabled ? 'disabled' : ''}>Previous</button>
+        <span>Page ${cur + 1} of ${state.numPages}</span>
+        <button type="button" id="btn_next" ${nextDisabled ? 'disabled' : ''}>Next</button>
+        <button type="button" id="btn_last" ${lastDisabled ? 'disabled' : ''} title="Jump to last page (reverse index + re-sort)">Last</button>
+      `;
+      document.getElementById('btn_prev').onclick = goPrev;
+      document.getElementById('btn_next').onclick = goNext;
+      document.getElementById('btn_last').onclick = goLast;
+    }
+
+    async function goPrev() {
+      if (state.currentPageIndex <= 0) return;
+      const targetIndex = state.currentPageIndex - 1;
+      const cursorForTarget = state.cursors[targetIndex - 1];
+      if (cursorForTarget != null) {
+        state.reachedLastViaButton = false;
+        await fetchAndShowPage(targetIndex);
+        return;
+      }
+      const beforeCursor = state.beforeCursors[state.currentPageIndex];
+      if (!beforeCursor) return;
+      state.reachedLastViaButton = false;
+      const page_size = Math.max(1, Math.min(1000, parseInt(pageSizeEl.value, 10) || 10));
+      btnSearch.disabled = true;
+      hideError();
+      try {
+        const res = await fetch('/api/page', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider_id: providerIdEl.value.trim(),
+            page_size,
+            date_start: dateStartEl.value.trim() || null,
+            date_end: dateEndEl.value.trim() || null,
+            before_cursor: beforeCursor,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showError(data.error || res.statusText);
+          return;
+        }
+        state.currentPageIndex = targetIndex;
+        state.cursors[targetIndex] = data.nextCursor || null;
+        state.beforeCursors[targetIndex] = firstDocCursor(data.documents[0]);
+        state.lastTimings = data.timings || {};
+        addRequestLogEntry(data.operations || [], 'Page ' + (targetIndex + 1) + ' (prev)');
+        renderTable(data.documents);
+        renderPagination();
+        renderTimings();
+        resultsSummaryEl.textContent = `Showing page ${targetIndex + 1} (${data.documents.length} records). Total: ${state.total.toLocaleString()}.`;
+      } finally {
+        btnSearch.disabled = false;
+      }
+    }
+
+    async function goNext() {
+      if (state.currentPageIndex >= state.numPages - 1) return;
+      state.reachedLastViaButton = false;
+      const targetIndex = state.currentPageIndex + 1;
+      await fetchAndShowPage(targetIndex);
+    }
+
+    async function goLast() {
+      if (state.numPages <= 1) return;
+      const page_size = Math.max(1, Math.min(1000, parseInt(pageSizeEl.value, 10) || 10));
+      btnSearch.disabled = true;
+      hideError();
+      try {
+        const res = await fetch('/api/page', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider_id: providerIdEl.value.trim(),
+            page_size,
+            date_start: dateStartEl.value.trim() || null,
+            date_end: dateEndEl.value.trim() || null,
+            include_count: includeCountEl.checked,
+            last_page: true,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showError(data.error || res.statusText);
+          return;
+        }
+        if (data.total != null) state.total = data.total;
+        if (data.numPages != null) state.numPages = data.numPages;
+        state.currentPageIndex = state.numPages - 1;
+        state.reachedLastViaButton = true;
+        state.cursors[state.currentPageIndex] = null;
+        state.beforeCursors[state.currentPageIndex] = firstDocCursor(data.documents[0]);
+        state.lastTimings = data.timings || {};
+        addRequestLogEntry(data.operations || [], 'Page ' + state.numPages + ' (last)');
+        renderTable(data.documents);
+        renderPagination();
+        renderTimings();
+        resultsSummaryEl.textContent = `Showing page ${state.numPages} (${data.documents.length} records). Total: ${state.total.toLocaleString()}.`;
+      } finally {
+        btnSearch.disabled = false;
+      }
+    }
+
+    async function fetchAndShowPage(pageIndex) {
+      const page_size = Math.max(1, Math.min(1000, parseInt(pageSizeEl.value, 10) || 10));
+      const payload = {
+        provider_id: providerIdEl.value.trim(),
+        page_size,
+        date_start: dateStartEl.value.trim() || null,
+        date_end: dateEndEl.value.trim() || null,
+        include_count: includeCountEl.checked,
+      };
+      if (pageIndex > 0) {
+        const cursor = state.cursors[pageIndex - 1];
+        if (!cursor) return;
+        payload.cursor = cursor;
+      }
+      btnSearch.disabled = true;
+      hideError();
+      try {
+        const res = await fetch('/api/page', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showError(data.error || res.statusText);
+          return;
+        }
+        state.currentPageIndex = pageIndex;
+        if (data.total != null) {
+          state.total = data.total;
+          state.numPages = data.numPages;
+        }
+        if (data.nextCursor != null) state.cursors[pageIndex] = data.nextCursor;
+        state.beforeCursors[pageIndex] = firstDocCursor(data.documents[0]);
+        state.lastTimings = data.timings || {};
+        addRequestLogEntry(data.operations || [], 'Page ' + (pageIndex + 1));
+        renderTable(data.documents);
+        renderPagination();
+        renderTimings();
+        resultsSummaryEl.textContent = `Showing page ${pageIndex + 1} (${data.documents.length} records). Total: ${state.total.toLocaleString()}.`;
+      } finally {
+        btnSearch.disabled = false;
+      }
+    }
+
+    async function loadFirstPage() {
+      const provider_id = providerIdEl.value.trim();
+      if (!provider_id) {
+        showError('Provider ID is required.');
+        return;
+      }
+      const page_size = Math.max(1, Math.min(1000, parseInt(pageSizeEl.value, 10) || 10));
+      btnSearch.disabled = true;
+      hideError();
+      emptyEl.style.display = 'none';
+      try {
+        const res = await fetch('/api/page', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider_id,
+            page_size,
+            date_start: dateStartEl.value.trim() || null,
+            date_end: dateEndEl.value.trim() || null,
+            include_count: includeCountEl.checked,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showError(data.error || res.statusText);
+          return;
+        }
+        state = {
+          total: data.total,
+          pageSize: data.pageSize,
+          numPages: data.numPages,
+          currentPageIndex: 0,
+          cursors: [data.nextCursor],
+          beforeCursors: { 0: firstDocCursor(data.documents[0]) },
+          lastTimings: data.timings || {},
+          requestLog: [],
+          requestCount: 0,
+          reachedLastViaButton: false,
+        };
+        addRequestLogEntry(data.operations || [], 'Page 1');
+        renderTable(data.documents);
+        renderPagination();
+        renderTimings();
+        resultsSummaryEl.style.display = 'block';
+        resultsSummaryEl.textContent = `Showing page 1 (${data.documents.length} records). Total: ${data.total.toLocaleString()}.`;
+      } finally {
+        btnSearch.disabled = false;
+      }
+    }
+
+    btnSearch.addEventListener('click', () => {
+      clearRequestLog();
+      loadFirstPage();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+# PBM Integration Services - Example configuration
+# Copy to config.yaml. Set MONGODB_URI in a .env file (copy .env.example to .env).
+# Do not put credentials or URIs in this file.
+#
+# MongoDB permissions: the database user must have find, insert, createIndex (and listIndexes)
+# on this database only. See Docs/MONGODB_PERMISSIONS.md for exact roles and scope.
+
+mongodb:
+  database: IntegrationServices
+  collection: claims
+
+data_generation:
+  total_claims_target: 3000000
+  # Service dates will be generated after this date (design: after year 2000)
+  date_start: "2000-01-01"
+  date_end: "2003-12-31"
+  # Tiers: claims per provider -> number of providers in that tier
+  # At least one provider per tier 1K, 5K, 10K, 50K, 100K, 500K, 1M; ramp up at lower tiers
+  tiers:
+    - claims_per_provider: 1000000
+      num_providers: 1
+    - claims_per_provider: 500000
+      num_providers: 2
+    - claims_per_provider: 100000
+      num_providers: 4
+    - claims_per_provider: 50000
+      num_providers: 8
+    - claims_per_provider: 10000
+      num_providers: 5
+    - claims_per_provider: 5000
+      num_providers: 20
+    - claims_per_provider: 1000
+      num_providers: 50
+  batch_size: 10000
+
+query:
+  default_page_size: 100
+
+performance:
+  iterations: 10
+  # Tier sizes to test (one provider TIN per tier will be used)
+  tiers_to_test:
+    - 1000
+    - 5000
+    - 10000
+    - 50000
+    - 100000
+    - 500000
+    - 1000000

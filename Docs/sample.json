@@ -1,0 +1,34 @@
+{
+    "renderingProvider": {
+        "providerName": null
+    },
+    "billingProvider": {
+        "providerTin": null,
+        "patientAccountNumber": null,
+        "providerId": null,
+        "providerNpi": null,
+        "providerName": null
+    },
+    "serviceBeginDate": null,
+    "serviceEndDate": null,
+    "patientInformation": {
+        "fullName": null
+    },
+    "identifiers": {
+        "claimSystemCode": null,
+        "claimSystemClaimId": null
+    },
+    "lastUpdatedTs": null,
+    "processedAmounts": {
+        "overpaymentBalance": {
+            "amount": null
+        },
+        "overpaymentAmount": {
+            "amount": null
+        },
+        "recoupedAmount": {
+            "amount": null
+        }
+    },
+    "recoveryMethod": null
+ }
