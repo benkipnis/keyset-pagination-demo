@@ -32,6 +32,22 @@ This keeps every page request to a bounded index scan and avoids the pitfalls of
 
 Optional: use **Run count on every page** to show count cost on next/prev if you want to contrast “count every time” vs “count once on first load.”
 
+### Provider ID numbering (demo data)
+
+If you generated data with the default `config/config.example.yaml`, provider IDs follow **`XX-NNNNNN`**: the first two digits are the tier (claim-volume bucket), the last six are the provider index within that tier. Use these when running the demo so you can show different result-set sizes:
+
+| Claims per provider | Provider ID pattern | # of providers |
+|--------------------|---------------------|-----------------|
+| 1,000,000          | `00-000000`         | 1               |
+| 500,000            | `01-000000`, `01-000001` | 2          |
+| 100,000            | `02-000000` … `02-000003` | 4          |
+| 50,000             | `03-000000` … `03-000007` | 8          |
+| 10,000             | `04-000000` … `04-000004` | 5          |
+| 5,000              | `05-000000` … `05-000019` | 20         |
+| 1,000              | `06-000000` … `06-000049` | 50         |
+
+Example: **`00-000000`** has 1M claims (good for demonstrating many pages and the **Last** button); **`06-000000`** has 1K (quick first-page and next-page timings).
+
 ---
 
 ## What you need to run the application (runtime)
@@ -69,13 +85,21 @@ From the **project root**:
    python -m scripts.ensure_index
    ```
 
-4. **Start the app**
+4. **Load demo data (optional but needed for the UI)**  
+   The app needs claims in MongoDB. The data generator uses the same config and `.env`; tier sizes and provider counts are in `config/config.yaml` (or `config.example.yaml`) under `data_generation.tiers`. To generate and load data:
+   ```bash
+   python -m scripts.run_data_generator
+   ```
+   You can pass a config path if needed: `python -m scripts.run_data_generator config/config.yaml`.  
+   The default config targets ~3M claims across 90 providers and can take several minutes. For a quick demo, you can temporarily edit `data_generation.tiers` in your config to fewer/smaller tiers (e.g. one tier with 1 provider and 10,000 claims).
+
+5. **Start the app**
    ```bash
    python -m web.app
    ```
    Or: `flask --app web.app:app run --host 0.0.0.0 --port 5000`
 
-5. **Use the UI**  
+6. **Use the UI**  
    Open **http://localhost:5000** in a browser. Enter a Provider ID (and optional date range), choose records per page, then use **Load first page**, **Next**, **Previous**, and **Last** while watching the timings and the **MongoDB requests** panel.
 
 For UI and API details, see **`web/README.md`**.
